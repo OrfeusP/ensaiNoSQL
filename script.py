@@ -1,19 +1,9 @@
+import urllib
+import json
 from pymongo import MongoClient
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.style.use('ggplot')
-import numpy as np
-import urllib
-import json
-import bson
-import numpy
-"""
-TODO:
-        -> Make queries on the transform dbs to get result
-        -> Find way to combine road to borough
-        -> Visualization on maps
-"""
-
 
 def getData(url):
     response = urllib.urlopen(url)
@@ -201,18 +191,10 @@ def plotting(roads_to_look, residences, healthy_borough,
              title_houses, xlabel_houses, ylabel_houses,
              title_health, xlabel_health, legend1, legend2):
 
-    ######## ROAD WITH BICYCLES ############
-    fig, ax = plt.subplots(1)
-    plt.bar(range(len(roads_to_look.values())), roads_to_look.values(), align='center')
-    plt.xticks(range(len(roads_to_look.keys())), roads_to_look.keys(), rotation=25)
-    plt.title(title_roads, fontsize=16)
-    plt.xlabel(xlabel_roads)
-    plt.ylabel(ylabel_roads)
-    plt.show()
-
     ####### HOUSES #########################
     fig, ax = plt.subplots(1)
-    plt.bar(range(len(residences.values())), residences.values(), align='center')
+    plt.bar(range(len(residences.values())),
+            residences.values(), align='center')
     plt.xticks(range(len(residences.keys())), residences.keys(), rotation=25)
     plt.title(title_houses, fontsize=16)
     plt.xlabel(xlabel_houses)
@@ -237,32 +219,35 @@ def plotting(roads_to_look, residences, healthy_borough,
 
     plt.bar(range(len(health)), health, bar_width, align='center',
             alpha=opacity,
-            color='blue',
             label='Health Facilities')
     plt.xlabel(xlabel_health)
     plt.title(title_health)
-    plt.xticks(range(len(healthy_borough.keys())), healthy_borough.keys(), rotation=25)
+    plt.xticks(range(len(healthy_borough.keys())),
+               healthy_borough.keys(), rotation=25)
     plt.legend()
     plt.tight_layout()
     plt.show()
 
-def main():
-    client = MongoClient('localhost', 27017)
-    # cleanDatabase(client['local'])
+    print "The best borough to leave for your requirment is Manhattan or Brooklyn because:\
+    \n\t -> You can choose from {0}/{1} houses\
+    \n\t -> The air pollution is {4}/{5} which is near the average of the five boroughs, and there are {2}/{3} health facilities\
+    \n\nPlease see in the next graph some streets in Manhattan that are full of bicyclists."\
+    .format(residences['Manhattan'], residences['Brooklyn'],
+            healthy_borough['Manhattan'].values()[0], healthy_borough['Brooklyn'].values()[0],
+            healthy_borough['Manhattan'].values()[1], healthy_borough['Brooklyn'].values()[1])
 
-    # house, airQuality, heath, bikeCountsManhattan = downloadData()
-    # loadData(client, house, airQuality, heath, bikeCountsManhattan)
-    # transformAirQuality(client)
-    # transformHealth(client)
-    # transformBikeCounts(client)
-    # transformHouses(client)
+    ######## ROAD WITH BICYCLES ############
+    fig, ax = plt.subplots(1)
+    plt.bar(range(len(roads_to_look.values())),
+            roads_to_look.values(), align='center')
+    plt.xticks(range(len(roads_to_look.keys())),
+               roads_to_look.keys(), rotation=25)
+    plt.title(title_roads, fontsize=16)
+    plt.xlabel(xlabel_roads)
+    plt.ylabel(ylabel_roads)
+    plt.show()
 
-    healthy_borough = air_health_combination(client)
-
-    roads_to_look = roads_with_bikes(client)
-
-    residences = residences_available(client)
-
+def myPlot(roads_to_look, residences, healthy_borough):
     title_roads = 'Bicyclists in the streets of Manhattan'
     xlabel_roads = 'Street'
     ylabel_roads = 'Bicyclists'
@@ -280,5 +265,27 @@ def main():
              title_roads, xlabel_roads, ylabel_roads,
              title_houses, xlabel_houses, ylabel_houses,
              title_health, xlabel_health, legend1, legend2)
+
+def main():
+    
+    client = MongoClient('localhost', 27017)
+    cleanDatabase(client['local'])
+    house, air_quality, heath, bike_count_manhattan = downloadData()
+    loadData(client, house, air_quality, heath, bike_count_manhattan)
+    transformAirQuality(client)
+    transformHealth(client)
+    transformBikeCounts(client)
+    transformHouses(client)
+
+    healthy_borough = air_health_combination(client)
+
+    roads_to_look = roads_with_bikes(client)
+
+    residences = residences_available(client)
+
+    myPlot(roads_to_look, residences, healthy_borough)
+    
+
+
 if __name__ == "__main__":
     main()

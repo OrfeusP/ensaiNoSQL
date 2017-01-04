@@ -23,9 +23,7 @@ def loadData2Database(client, data, collection):
     """ Function to load the Data in the MongoDB"""
 
     db = client['local']
-    if collection == "housing":
-        db.houses.insert(data)
-    elif collection == "airQuality":
+    if collection == "airQuality":
         db.airQuality.insert(data)
     elif collection == "health":
         db.health.insert(data)
@@ -33,23 +31,20 @@ def loadData2Database(client, data, collection):
         db.bikeCounts.insert(data)
 
 
-def loadData(client, housingData, airQualityData, healthData, bikeCountsManhattanData):
-    loadData2Database(client, housingData, "housing")
+def loadData(client,airQualityData, healthData, bikeCountsManhattanData):
     loadData2Database(client, airQualityData, "airQuality")
     loadData2Database(client, healthData, "health")
     loadData2Database(client, bikeCountsManhattanData, "bikeCountsManhattan")
 
 
 def downloadData():
-    housingData = getData(
-        "https://data.cityofnewyork.us/resource/k673-vwre.json")
     airQualityData = getData(
         "https://data.cityofnewyork.us/resource/ah89-62h9.json")
     healthData = getData(
         "https://data.cityofnewyork.us/resource/w7a6-9xrz.json")
     bikeCountsManhattanData = getData(
         "https://data.cityofnewyork.us/resource/kcgm-jvs7.json")
-    return housingData, airQualityData, healthData, bikeCountsManhattanData
+    return airQualityData, healthData, bikeCountsManhattanData
 
 
 def transformAirQuality(client):
@@ -108,9 +103,6 @@ def transformBikeCounts(client):
             }
         }, {'$out': 'bikeCounts'}])
 
-# TODO
-    # def transformHouses(client):
-
 
 def air_health_combination(client):
     db = client['local']
@@ -151,16 +143,6 @@ def air_health_combination(client):
     return selection
 
 
-def transformHouses(client):
-    db = client['local']
-    db.houses.aggregate(
-        [
-            {'$group': {
-                '_id': '$borough',
-                'project_ids': {'$addToSet': '$project_id'}
-            }
-            }, {'$out': 'houses'}])
-
 
 def roads_with_bikes(client):
     db = client['local']
@@ -179,27 +161,15 @@ def residences_available(client):
 
     houses = {}
     result = db.houses.find()
-
     for item in result:
         houses[item['_id']] = len(item['project_ids'])
-
+        #print houses[item['_id']]
     return houses
 
 
-def plotting(roads_to_look, residences, healthy_borough,
+def plotting(roads_to_look,healthy_borough,
              title_roads, xlabel_roads, ylabel_roads,
-             title_houses, xlabel_houses, ylabel_houses,
              title_health, xlabel_health, legend1, legend2):
-
-    ####### HOUSES #########################
-    fig, ax = plt.subplots(1)
-    plt.bar(range(len(residences.values())),
-            residences.values(), align='center')
-    plt.xticks(range(len(residences.keys())), residences.keys(), rotation=25)
-    plt.title(title_houses, fontsize=16)
-    plt.xlabel(xlabel_houses)
-    plt.ylabel(ylabel_houses)
-    plt.show()
 
     ###### HEALTH ##############
 
@@ -227,13 +197,10 @@ def plotting(roads_to_look, residences, healthy_borough,
     plt.legend()
     plt.tight_layout()
     plt.show()
-
-    print "The best borough to leave for your requirment is Manhattan or Brooklyn because:\
-    \n\t -> You can choose from {0}/{1} houses\
-    \n\t -> The air pollution is {4}/{5} which is near the average of the five boroughs, and there are {2}/{3} health facilities\
+    print "The best borough to leave for your requirements is Manhattan or Brooklyn because:\
+    \n\t -> The air pollution is {2}/{3} which is near the average of the five boroughs, and there are {0}/{1} health facilities\
     \n\nPlease see in the next graph some streets in Manhattan that are full of bicyclists."\
-    .format(residences['Manhattan'], residences['Brooklyn'],
-            healthy_borough['Manhattan'].values()[0], healthy_borough['Brooklyn'].values()[0],
+    .format(healthy_borough['Manhattan'].values()[0], healthy_borough['Brooklyn'].values()[0],
             healthy_borough['Manhattan'].values()[1], healthy_borough['Brooklyn'].values()[1])
 
     ######## ROAD WITH BICYCLES ############
@@ -247,43 +214,35 @@ def plotting(roads_to_look, residences, healthy_borough,
     plt.ylabel(ylabel_roads)
     plt.show()
 
-def myPlot(roads_to_look, residences, healthy_borough):
+def myPlot(roads_to_look, healthy_borough):
     title_roads = 'Bicyclists in the streets of Manhattan'
     xlabel_roads = 'Street'
     ylabel_roads = 'Bicyclists'
 
-    title_houses = 'Number of houses in each borough '
-    xlabel_houses = 'Borough'
-    ylabel_houses = 'Houses'
 
     title_health = 'Best Health Facilities - Air Pollution Combo'
     xlabel_health = 'Borough'
     legend1 = 'Average Pollution'
     legend2 = 'Health Facilities'
 
-    plotting(roads_to_look, residences, healthy_borough,
+    plotting(roads_to_look, healthy_borough,
              title_roads, xlabel_roads, ylabel_roads,
-             title_houses, xlabel_houses, ylabel_houses,
              title_health, xlabel_health, legend1, legend2)
 
 def main():
     
     client = MongoClient('localhost', 27017)
     cleanDatabase(client['local'])
-    house, air_quality, heath, bike_count_manhattan = downloadData()
-    loadData(client, house, air_quality, heath, bike_count_manhattan)
+    air_quality, heath, bike_count_manhattan = downloadData()
+    loadData(client, air_quality, heath, bike_count_manhattan)
     transformAirQuality(client)
     transformHealth(client)
     transformBikeCounts(client)
-    transformHouses(client)
 
     healthy_borough = air_health_combination(client)
 
     roads_to_look = roads_with_bikes(client)
-
-    residences = residences_available(client)
-
-    myPlot(roads_to_look, residences, healthy_borough)
+    myPlot(roads_to_look, healthy_borough)
     
 
 
